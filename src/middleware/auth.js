@@ -15,5 +15,5 @@ const auth = (req, res, next) => {
     return res.status(401).json({ error: 'Invalid or expired token' })
   }
 }
-
+// comment out the console log for debugging
 module.exports = auth
