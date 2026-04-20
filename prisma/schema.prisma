@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Users ─────────────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  bio       String?
+  timezone  String   @default("Asia/Kolkata")
+  language  String   @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projects       ProjectMember[]
+  assignedTasks  Task[]          @relation("TaskAssignee")
+  comments       Comment[]
+  timeLogs       TimeLog[]
+  notifications  Notification[]
+  squadMembers   SquadMember[]
+}
+
+// ── Squads ────────────────────────────────────────────
+model Squad {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String   @default("#3B82F6")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members  SquadMember[]
+  projects Project[]
+}
+
+model SquadMember {
+  id      String @id @default(uuid())
+  role    String @default("Member")
+
+  squadId String
+  squad   Squad  @relation(fields: [squadId], references: [id], onDelete: Cascade)
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([squadId, userId])
+}
+
+// ── Projects ──────────────────────────────────────────
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String   @default("#3B82F6")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  squadId String?
+  squad   Squad?  @relation(fields: [squadId], references: [id], onDelete: SetNull)
+
+  members ProjectMember[]
+  tasks   Task[]
+}
+
+model ProjectMember {
+  id   String @id @default(uuid())
+  role String @default("MEMBER")
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+}
+
+// ── Tasks ─────────────────────────────────────────────
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      String   @default("TODO")
+  priority    String   @default("MEDIUM")
+  dueDate     DateTime?
+  estimate    Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  assigneeId String?
+  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  parentId   String?
+  parent     Task?   @relation("SubTasks", fields: [parentId], references: [id], onDelete: SetNull)
+  subTasks   Task[]  @relation("SubTasks")
+
+  comments    Comment[]
+  attachments Attachment[]
+  timeLogs    TimeLog[]
+  linkedFrom  LinkedItem[] @relation("LinkedFrom")
+  linkedTo    LinkedItem[] @relation("LinkedTo")
+}
+
+// ── Comments ──────────────────────────────────────────
+model Comment {
+  id        String   @id @default(uuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+// ── Attachments ───────────────────────────────────────
+model Attachment {
+  id        String   @id @default(uuid())
+  name      String
+  size      String
+  type      String
+  createdAt DateTime @default(now())
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+}
+
+// ── Time Logs ─────────────────────────────────────────
+model TimeLog {
+  id        String   @id @default(uuid())
+  duration  Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  loggedById String
+  loggedBy   User   @relation(fields: [loggedById], references: [id], onDelete: Cascade)
+}
+
+// ── Linked Items ──────────────────────────────────────
+model LinkedItem {
+  id       String @id @default(uuid())
+  type     String @default("related")
+
+  taskId       String
+  task         Task   @relation("LinkedFrom", fields: [taskId], references: [id], onDelete: Cascade)
+
+  linkedTaskId String
+  linkedTask   Task   @relation("LinkedTo", fields: [linkedTaskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ── Notifications ─────────────────────────────────────
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  taskId    String?
+}
