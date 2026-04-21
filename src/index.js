@@ -12,12 +12,12 @@ const app = express()
 const PORT = process.env.PORT || 5001
 
 // Middleware
-// app.use(cors())
 app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
     /\.vercel\.app$/,
+    /\.onrender\.com$/,
   ],
   credentials: true,
 }))
@@ -34,6 +34,32 @@ app.use('/api/projects', projectRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/squads', squadRoutes)
 app.use('/api/notifications', notificationRoutes)
+
+// Global timelogs route (all logs for current user)
+const auth = require('./middleware/auth')
+const prisma = require('./utils/prisma')
+
+app.get('/api/timelogs', auth, async (req, res) => {
+  try {
+    const logs = await prisma.timeLog.findMany({
+      where: { loggedById: req.userId },
+      include: {
+        task: {
+          select: {
+            id: true, title: true, status: true,
+            project: { select: { id: true, name: true, color: true } }
+          }
+        },
+        loggedBy: { select: { id: true, name: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    res.json(logs)
+  } catch (err) {
+    console.error('Timelogs error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
 
 // 404 handler
 app.use((req, res) => {

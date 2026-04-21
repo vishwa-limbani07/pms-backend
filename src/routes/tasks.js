@@ -189,7 +189,23 @@ router.post('/:id/linked', auth, async (req, res) => {
     res.status(201).json(link)
   } catch (err) { res.status(500).json({ error: 'Server error' }) }
 })
-
+// Get ALL time logs for current user (across all tasks)
+router.get('/timelogs/all', auth, async (req, res) => {
+  try {
+    const logs = await prisma.timeLog.findMany({
+      where: { loggedById: req.userId },
+      include: {
+        task: { select: { id: true, title: true, status: true, project: { select: { id: true, name: true, color: true } } } },
+        loggedBy: { select: { id: true, name: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    res.json(logs)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
 router.delete('/linked/:id', auth, async (req, res) => {
   try {
     await prisma.linkedItem.delete({ where: { id: req.params.id } })
