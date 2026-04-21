@@ -93,7 +93,27 @@ router.post('/:id/members', auth, async (req, res) => {
     res.status(500).json({ error: 'Server error' })
   }
 })
-
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const { name, description, color } = req.body
+    const squad = await prisma.squad.update({
+      where: { id: req.params.id },
+      data: { name, description, color },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, email: true } } } }
+      }
+    })
+    res.json({
+      ...squad,
+      members: squad.members.map(m => ({
+        id: m.user.id, name: m.user.name, email: m.user.email, role: m.role
+      }))
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
 // Remove member from squad
 router.delete('/:id/members/:userId', auth, async (req, res) => {
   try {
