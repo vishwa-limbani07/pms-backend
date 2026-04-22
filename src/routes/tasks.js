@@ -155,7 +155,8 @@ router.get('/:id/timelogs', auth, async (req, res) => {
 router.post('/:id/timelogs', auth, async (req, res) => {
   try {
     const log = await prisma.timeLog.create({
-      data: { duration: req.body.duration, note: req.body.note, taskId: req.params.id, loggedById: req.userId },
+      data: { duration: req.body.duration, note: req.body.note,        date: req.body.date ? new Date(req.body.date) : new Date(),
+ taskId: req.params.id, loggedById: req.userId },
       include: { loggedBy: { select: { id: true, name: true, email: true } } }
     })
     res.status(201).json(log)
